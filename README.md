@@ -24,7 +24,9 @@ Poor quality recordings often introduce linear distortions:
 - ✅ Production-ready MATLAB code
 
 ## Usage
-
+- Enter name/paths of input and output files
+- Let the script run and listen to results
 
 ## Curious for more information? 
-Read the white paper
+- Read the white paper
+- Adjust parameters as needed for your system (ex custom impulse response)
