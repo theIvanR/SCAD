@@ -30,3 +30,5 @@ Poor quality recordings often introduce linear distortions:
 ## Curious for more information? 
 - Read the white paper
 - Adjust parameters as needed for your system (ex custom impulse response)
+
+![SCAD Workflow](scad.png)
