@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inverse Audio Corrector</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(145deg, #f5f7fc 0%, #e9eef4 100%);
+      color: #0f172a;
+    }
+    .card {
+      width: 100%;
+      max-width: 1100px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(10px);
+      border-radius: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.10);
+      padding: 28px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      background: linear-gradient(135deg, #1a2a4f, #2c3e66);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .sub {
+      margin: 0 0 20px;
+      color: #334155;
+      opacity: 0.88;
+      border-left: 3px solid #3b82f6;
+      padding-left: 12px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 18px;
+    }
+    .panel {
+      background: rgba(240,244,250,0.9);
+      border: 1px solid rgba(148,163,184,0.28);
+      border-radius: 22px;
+      padding: 18px;
+    }
+    .drop-zone {
+      background: #f8fbff;
+      border: 2px dashed #3b82f6;
+      border-radius: 22px;
+      padding: 28px 18px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.18s ease;
+      user-select: none;
+    }
+    .drop-zone.drag-over {
+      background: #e6f0ff;
+      border-color: #1e40af;
+      transform: scale(0.985);
+    }
+    .drop-zone p { margin: 8px 0; font-weight: 600; }
+    .drop-zone small { color: #475569; }
+    .file-meta {
+      margin-top: 12px;
+      font-size: 0.92rem;
+      color: #334155;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .status {
+      margin-top: 14px;
+      min-height: 84px;
+      background: #0f172a;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: #cbd5e6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
+    .status.processing {
+      background: #075985;
+      color: #c9f0ff;
+      box-shadow: 0 0 0 2px #38bdf8 inset;
+    }
+    .status.error {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+    .settings-title {
+      font-weight: 800;
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(148,163,184,0.28);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s ease;
+      background: #1e3a8a;
+    }
+    button:hover { background: #2563eb; transform: translateY(-1px); }
+    button.secondary { background: #334155; }
+    button.secondary:hover { background: #475569; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .download {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #0f766e;
+      word-break: break-word;
+    }
+    footer {
+      margin-top: 16px;
+      font-size: 0.78rem;
+      text-align: center;
+      color: #475569;
+    }
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h1>🎧 Inverse Audio Corrector</h1>
+    <div class="sub">
+      Multi-resolution window selection → conditioning-aware consensus inverse model → global Wiener apply.
+      Everything runs locally in the browser via Pyodide.
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div id="dropzone" class="drop-zone">
+          <p>📂 Drag & drop any audio file</p>
+          <p>🎵 WAV, MP3, OGG, M4A, AAC, etc.</p>
+          <small>Click here too if you prefer the file picker</small>
+        </div>
+
+        <div id="fileMeta" class="file-meta">No file loaded yet.</div>
+        <div id="status" class="status">⚡ Loading Pyodide...</div>
+
+        <div class="buttons">
+          <button id="processBtn" disabled>Process file</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+        </div>
+        <a id="downloadLink" class="download" style="display:none;" href="#" download="recovered_clean.wav">Download</a>
+      </div>
+
+      <div class="panel">
+        <div class="settings-title">Visible settings</div>
+        <div class="settings-grid">
+          <div class="field"><label for="Lh">Lh</label><input id="Lh" type="number" value="192" step="1"></div>
+          <div class="field"><label for="n_iter">n_iter</label><input id="n_iter" type="number" value="8" step="1"></div>
+          <div class="field"><label for="lambda_h">lambda_h</label><input id="lambda_h" type="number" value="1e-4" step="0.00001"></div>
+          <div class="field"><label for="smooth_mu">smooth_mu</label><input id="smooth_mu" type="number" value="5e-3" step="0.0001"></div>
+          <div class="field"><label for="noise_floor">noise_floor</label><input id="noise_floor" type="number" value="1e-8" step="0.00000001"></div>
+          <div class="field"><label for="maxInverseGain">maxInverseGain</label><input id="maxInverseGain" type="number" value="15" step="1"></div>
+          <div class="field"><label for="seg_seconds_list">seg_seconds_list</label><input id="seg_seconds_list" type="text" value="0.5,1.0,2.0"></div>
+          <div class="field"><label for="K">K</label><input id="K" type="number" value="30" step="1"></div>
+          <div class="field"><label for="hop_fraction">hop_fraction</label><input id="hop_fraction" type="number" value="0.5" step="0.05"></div>
+          <div class="field"><label for="pool_mult">pool_mult</label><input id="pool_mult" type="number" value="4" step="1"></div>
+          <div class="field"><label for="n_outer">n_outer</label><input id="n_outer" type="number" value="2" step="1"></div>
+          <div class="field"><label for="min_rms">min_rms</label><input id="min_rms" type="number" value="1e-10" step="0.0000000001"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>Pyodide + NumPy + SciPy execute locally in the browser.</footer>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropzone');
+    const statusDiv = document.getElementById('status');
+    const fileMeta = document.getElementById('fileMeta');
+    const processBtn = document.getElementById('processBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const downloadLink = document.getElementById('downloadLink');
+
+    let pyodide = null;
+    let pyodideReady = false;
+    let currentFile = null;
+    let processing = false;
+
+    function setStatus(msg, mode = '') {
+      statusDiv.classList.remove('processing', 'error');
+      if (mode) statusDiv.classList.add(mode);
+      statusDiv.innerHTML = msg;
+    }
+
+    function setPyVar(name, value) {
+      pyodide.globals.set(name, pyodide.toPy(value));
+    }
+
+    function parseCfg() {
+      const segList = document.getElementById('seg_seconds_list').value
+        .split(',')
+        .map(s => parseFloat(s.trim()))
+        .filter(v => Number.isFinite(v) && v > 0);
+
+      return {
+        Lh: parseInt(document.getElementById('Lh').value, 10),
+        n_iter: parseInt(document.getElementById('n_iter').value, 10),
+        lambda_h: parseFloat(document.getElementById('lambda_h').value),
+        smooth_mu: parseFloat(document.getElementById('smooth_mu').value),
+        noise_floor: parseFloat(document.getElementById('noise_floor').value),
+        maxInverseGain: parseFloat(document.getElementById('maxInverseGain').value),
+        seg_seconds_list: segList.length ? segList : [0.5, 1.0, 2.0],
+        K: parseInt(document.getElementById('K').value, 10),
+        hop_fraction: parseFloat(document.getElementById('hop_fraction').value),
+        pool_mult: parseInt(document.getElementById('pool_mult').value, 10),
+        n_outer: parseInt(document.getElementById('n_outer').value, 10),
+        min_rms: parseFloat(document.getElementById('min_rms').value)
+      };
+    }
+
+    async function loadPyodideAndPackages() {
+      setStatus('🐍 Loading Pyodide & packages (numpy, scipy)...');
+      try {
+        pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.2/full/' });
+        await pyodide.loadPackage(['numpy', 'scipy']);
+
+        await pyodide.runPythonAsync(`
+import io
+import base64
+import numpy as np
+from scipy.io import wavfile
+from scipy.linalg import toeplitz
+
+
+def secondDiffPenalty(L):
+    if L < 3:
+        return np.zeros((L, L), dtype=np.float64)
+    e = np.ones(L, dtype=np.float64)
+    D = np.zeros((L - 2, L), dtype=np.float64)
+    for i in range(L - 2):
+        D[i, i] = 1.0
+        D[i, i + 1] = -2.0
+        D[i, i + 2] = 1.0
+    return D.T @ D
+
+
+def capSpectrum(W, maxGain):
+    mag = np.abs(W)
+    idx = mag > maxGain
+    if np.any(idx):
+        W = W.copy()
+        W[idx] = W[idx] * (maxGain / mag[idx])
+    return W
+
+
+def rms(x):
+    x = np.asarray(x, dtype=np.float64).ravel()
+    return float(np.sqrt(np.mean(x * x) + 1e-30))
+
+
+def apply_model(y, h, nsr, maxGain):
+    y = np.asarray(y, dtype=np.float64).ravel()
+    N = len(y)
+    Lh = len(h)
+    Nfft = 1 << int(np.ceil(np.log2(max(1, N + Lh - 1))))
+    H = np.fft.fft(np.r_[h, np.zeros(Nfft - Lh, dtype=np.float64)], n=Nfft)
+    W = np.conj(H) / (np.abs(H) ** 2 + nsr)
+    W = capSpectrum(W, maxGain)
+    Y = np.fft.fft(np.r_[y, np.zeros(Nfft - N, dtype=np.float64)], n=Nfft)
+    x = np.fft.ifft(W * Y).real[:N]
+    x = x / (np.max(np.abs(x)) + np.finfo(np.float64).eps)
+    return x
+
+
+def smart_inverse_backend_single(y, cfg):
+    y = np.asarray(y, dtype=np.float64).ravel()
+    M = len(y)
+
+    Lh = int(cfg['Lh'])
+    n_iter = int(cfg['n_iter'])
+    lambda_h = float(cfg['lambda_h'])
+    smooth_mu = float(cfg['smooth_mu'])
+    noise_floor = float(cfg['noise_floor'])
+    maxGain = float(cfg['maxInverseGain'])
+
+    t = np.arange(Lh, dtype=np.float64)
+    tau = max(4, int(round(Lh / 12.0)))
+    h = np.exp(-t / tau)
+    h = h / (np.sum(h) + np.finfo(np.float64).eps)
+    x = y.copy()
+    R = secondDiffPenalty(Lh)
+
+    for _ in range(n_iter):
+        Nfft = 1 << int(np.ceil(np.log2(max(1, M + Lh - 1))))
+        H = np.fft.fft(np.r_[h, np.zeros(Nfft - Lh, dtype=np.float64)], n=Nfft)
+
+        yhat = np.convolve(x, h, mode='full')[:M]
+        resid = y - yhat
+        sig2 = max(noise_floor, np.var(resid))
+        nsr_iter = sig2 / max(np.var(y), np.finfo(np.float64).eps)
+
+        W = np.conj(H) / (np.abs(H) ** 2 + nsr_iter)
+        W = capSpectrum(W, maxGain)
+        x = np.fft.ifft(W * np.fft.fft(np.r_[y, np.zeros(Nfft - M, dtype=np.float64)], n=Nfft)).real[:M]
+
+        Xmat = np.zeros((M, Lh), dtype=np.float64)
+        for k in range(Lh):
+            nrows = M - k
+            if nrows > 0:
+                Xmat[k:k+nrows, k] = x[:nrows]
+
+        A = Xmat.T @ Xmat + lambda_h * np.eye(Lh) + smooth_mu * R
+        b = Xmat.T @ y
+
+        try:
+            h_new = np.linalg.solve(A, b)
+        except Exception:
+            h_new = np.linalg.lstsq(A, b, rcond=None)[0]
+
+        h_new = h_new / (np.sum(h_new) + np.finfo(np.float64).eps)
+        if np.linalg.norm(h_new - h) / (np.linalg.norm(h) + np.finfo(np.float64).eps) < 1e-4:
+            h = h_new
+            break
+        h = h_new
+
+    yhat = np.convolve(x, h, mode='full')[:M]
+    resid = y - yhat
+    sig2 = max(noise_floor, np.var(resid))
+    nsr = sig2 / max(np.var(y), np.finfo(np.float64).eps)
+    return h, float(nsr)
+
+
+def select_best_segments_smart(y, Fs, cfg):
+    y = np.asarray(y, dtype=np.float64).ravel()
+    N = len(y)
+    Lh = int(cfg['Lh'])
+    seg_list = list(cfg['seg_seconds_list'])
+    hop_fraction = float(cfg['hop_fraction'])
+    K = int(cfg['K'])
+    pool_mult = int(cfg['pool_mult'])
+    min_rms = float(cfg['min_rms'])
+
+    cand = []
+
+    for seg_seconds in seg_list:
+        L = int(round(float(seg_seconds) * Fs))
+        if L < max(64, Lh):
+            continue
+        hop = max(1, int(round(L * hop_fraction)))
+
+        for i in range(0, N - L + 1, hop):
+            seg = y[i:i+L]
+            pwr = float(np.mean(seg * seg))
+            if pwr < min_rms:
+                continue
+
+            seg0 = seg - np.mean(seg)
+            w = np.hanning(L)
+            seg1 = seg0 * w
+            S = np.abs(np.fft.fft(seg1))
+            S = S[: len(S) // 2]
+            S = S + 1e-12
+            P = S / np.sum(S)
+            entropy = float(-np.sum(P * np.log(P)))
+            flatness = float(np.exp(np.mean(np.log(S))) / (np.mean(S) + 1e-30))
+
+            cheapScore = (pwr + np.finfo(np.float64).eps) * (entropy + 1e-12) * (0.5 + 0.5 * flatness)
+            cand.append({
+                'start': i,
+                'L': L,
+                'score': 0.0,
+                'condProxy': 0.0,
+                'energy': pwr,
+                'entropy': entropy,
+                'flatness': flatness,
+                'cheapScore': cheapScore
+            })
+
+    if not cand:
+        L = min(int(round(float(seg_list[0]) * Fs)), N)
+        return [y[:L]], [{ 'start': 0, 'L': L, 'score': 1.0, 'condProxy': 1.0, 'energy': float(np.mean(y[:L] * y[:L])), 'entropy': 0.0, 'flatness': 1.0, 'cheapScore': 1.0 }]
+
+    cand = sorted(cand, key=lambda c: c['cheapScore'], reverse=True)
+    poolN = min(len(cand), max(K * pool_mult, K + 10))
+    pool = cand[:poolN]
+
+    for c in pool:
+        seg = y[c['start']:c['start'] + c['L']]
+        seg = seg - np.mean(seg)
+        seg = seg / (rms(seg) + np.finfo(np.float64).eps)
+
+        lagMax = min(Lh - 1, len(seg) - 1)
+        if lagMax < 2:
+            condProxy = 1e12
+        else:
+            r = np.correlate(seg, seg, mode='full') / max(len(seg), 1)
+            mid = len(r) // 2
+            rpos = r[mid:mid + lagMax + 1]
+            if len(rpos) < Lh:
+                rpos = np.r_[rpos, np.zeros(Lh - len(rpos))]
+            Aproxy = toeplitz(rpos[:Lh])
+            condProxy = float(np.linalg.cond(Aproxy + 1e-10 * np.eye(Lh)))
+        condProxy = min(condProxy, 1e12)
+        c['condProxy'] = condProxy
+        c['score'] = c['cheapScore'] / np.log1p(condProxy)
+
+    pool = sorted(pool, key=lambda c: c['score'], reverse=True)
+    sel = pool[:min(K, len(pool))]
+
+    segments = [y[c['start']:c['start'] + c['L']] for c in sel]
+    return segments, sel
+
+
+def smart_inverse_backend_multi(segments, meta, Fs, cfg):
+    nSeg = len(segments)
+    if nSeg == 0:
+        raise ValueError('No training segments provided')
+
+    h_all = []
+    nsr_all = []
+
+    for seg in segments:
+        h_s, nsr_s = smart_inverse_backend_single(seg, cfg)
+        h_all.append(np.asarray(h_s, dtype=np.float64).ravel())
+        nsr_all.append(float(nsr_s))
+
+    Lh = int(cfg['Lh'])
+    Hstack = np.zeros((Lh, nSeg), dtype=np.float64)
+    for s, hs in enumerate(h_all):
+        L = min(Lh, len(hs))
+        Hstack[:L, s] = hs[:L]
+
+    h0 = np.median(Hstack, axis=1)
+    d = np.linalg.norm(Hstack - h0[:, None], axis=0)
+    md = np.median(d)
+    madD = np.median(np.abs(d - md)) + np.finfo(np.float64).eps
+    inliers = d <= (md + 2.5 * madD)
+    if not np.any(inliers):
+        inliers[:] = True
+
+    scores = np.array([m['score'] for m in meta], dtype=np.float64)
+    conds = np.array([m['condProxy'] for m in meta], dtype=np.float64)
+    weights = scores / np.log1p(conds + 1.0)
+    weights[~inliers] = 0.0
+    if np.sum(weights) <= 0:
+        weights = inliers.astype(np.float64)
+    weights = weights / (np.sum(weights) + np.finfo(np.float64).eps)
+
+    h = Hstack @ weights
+    h = h / (np.sum(h) + np.finfo(np.float64).eps)
+    nsr = float(np.sum(np.asarray(nsr_all) * weights))
+
+    return {
+        'h': h,
+        'nsr': nsr,
+        'apply': lambda yin: apply_model(yin, h, nsr, float(cfg['maxInverseGain']))
+    }, {
+        'nSeg': nSeg,
+        'nInliers': int(np.sum(inliers)),
+        'weights': weights.tolist(),
+        'distances': d.tolist(),
+        'meta': meta
+    }
+
+
+def process_audio(samples_list, sample_rate, cfg):
+    y = np.asarray(samples_list, dtype=np.float64).ravel()
+    Fs = int(sample_rate)
+    y_ref = y.copy()
+
+    outer_logs = []
+    model = None
+    diag = None
+
+    n_outer = int(cfg['n_outer'])
+    for outer in range(n_outer):
+        segments, meta = select_best_segments_smart(y_ref, Fs, cfg)
+        model, diag = smart_inverse_backend_multi(segments, meta, Fs, cfg)
+
+        outer_logs.append({
+            'outer': outer + 1,
+            'nSeg': diag['nSeg'],
+            'nInliers': diag['nInliers'],
+            'Lh': int(len(model['h'])),
+            'nsr': float(model['nsr'])
+        })
+
+        if outer < n_outer - 1:
+            y_ref = model['apply'](y)
+
+    x = model['apply'](y)
+
+    buf = io.BytesIO()
+    wavfile.write(buf, Fs, np.asarray(x, dtype=np.float32))
+    wav_b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+
+    return {
+        'wav_b64': wav_b64,
+        'fs': Fs,
+        'outer_logs': outer_logs,
+        'final_Lh': int(len(model['h'])),
+        'final_nsr': float(model['nsr']),
+        'nSeg': int(diag['nSeg']),
+        'nInliers': int(diag['nInliers'])
+    }
+        `);
+
+        pyodideReady = true;
+        setStatus('✅ Ready. Drop an audio file, then press “Process file”.');
+      } catch (err) {
+        console.error(err);
+        setStatus(`❌ Load failed:\n${err.message}`, 'error');
+      }
+    }
+
+    async function decodeAudioFile(arrayBuffer) {
+      return new Promise((resolve, reject) => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        ctx.decodeAudioData(arrayBuffer, (buffer) => {
+          const numChannels = buffer.numberOfChannels;
+          const length = buffer.length;
+          const sampleRate = buffer.sampleRate;
+          let mono = new Float32Array(length);
+          if (numChannels === 1) {
+            mono = buffer.getChannelData(0);
+          } else {
+            for (let ch = 0; ch < numChannels; ch++) {
+              const chan = buffer.getChannelData(ch);
+              for (let i = 0; i < length; i++) mono[i] += chan[i] / numChannels;
+            }
+          }
+          ctx.close();
+          resolve({ samples: mono, sampleRate });
+        }, reject);
+      });
+    }
+
+    function formatBytes(n) {
+      const units = ['B','KB','MB','GB'];
+      let i = 0;
+      let v = n;
+      while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+      return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    async function processCurrentFile() {
+      if (!pyodideReady) return setStatus('⏳ Pyodide is still loading.');
+      if (!currentFile) return setStatus('⚠️ Drop or choose an audio file first.');
+      if (processing) return setStatus('⏳ Already processing.', 'processing');
+
+      processing = true;
+      processBtn.disabled = true;
+      downloadLink.style.display = 'none';
+      setStatus(`📁 Loading: ${currentFile.name}`, 'processing');
+
+      try {
+        const arrayBuffer = await currentFile.arrayBuffer();
+        setStatus('🎛️ Decoding audio ...', 'processing');
+        const { samples, sampleRate } = await decodeAudioFile(arrayBuffer);
+
+        const cfg = parseCfg();
+        fileMeta.textContent = [
+          `File: ${currentFile.name}`,
+          `Size: ${formatBytes(currentFile.size)}`,
+          `Duration: ${(samples.length / sampleRate).toFixed(2)} s`,
+          `Sample rate: ${sampleRate} Hz`,
+          `Training windows: ${cfg.seg_seconds_list.join(', ')} s`,
+          `K: ${cfg.K} | outer passes: ${cfg.n_outer}`
+        ].join('\n');
+
+        setPyVar('samples_list', Array.from(samples));
+        setPyVar('sample_rate', sampleRate);
+        setPyVar('cfg', cfg);
+
+        setStatus('🧠 Running multi-window inverse training ... <span class="spinner"></span>', 'processing');
+        const result = await pyodide.runPythonAsync(`process_audio(samples_list, sample_rate, cfg)`);
+
+        const wavB64 = result.get('wav_b64');
+        const logs = result.get('outer_logs');
+        const finalLh = result.get('final_Lh');
+        const finalNsr = result.get('final_nsr');
+        const nSeg = result.get('nSeg');
+        const nInliers = result.get('nInliers');
+
+        const logLines = [];
+        for (const rec of logs.toJs()) {
+          logLines.push(`Outer ${rec.outer}: segs=${rec.nSeg}, inliers=${rec.nInliers}, Lh=${rec.Lh}, NSR=${Number(rec.nsr).toExponential(3)}`);
+        }
+
+        const binary = atob(wavB64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'recovered_clean.wav';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        downloadLink.href = url;
+        downloadLink.download = 'recovered_clean.wav';
+        downloadLink.textContent = 'Download recovered_clean.wav';
+        downloadLink.style.display = 'block';
+
+        setStatus([
+          '✅ Done.',
+          ...logLines,
+          `Final Lh = ${finalLh}`,
+          `Final NSR = ${Number(finalNsr).toExponential(3)}`,
+          `Inliers = ${nInliers}/${nSeg}`,
+          'Saved: recovered_clean.wav'
+        ].join('\n'));
+      } catch (err) {
+        console.error(err);
+        const msg = (err && err.message) ? err.message : String(err);
+        setStatus(`❌ Error:\n${msg.substring(0, 1200)}`, 'error');
+      } finally {
+        processing = false;
+        processBtn.disabled = false;
+      }
+    }
+
+    function loadFile(file) {
+      currentFile = file;
+      processBtn.disabled = false;
+      fileMeta.textContent = `Loaded: ${file.name}\nReady to process with the visible settings.`;
+      setStatus(`📄 Loaded: ${file.name}\nPress “Process file” when ready.`);
+    }
+
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, preventDefaults));
+    dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-over'));
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+      dropZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files && files.length) loadFile(files[0]);
+    });
+    dropZone.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'audio/*';
+      input.onchange = () => {
+        if (input.files && input.files.length) loadFile(input.files[0]);
+      };
+      input.click();
+    });
+
+    processBtn.addEventListener('click', processCurrentFile);
+    resetBtn.addEventListener('click', () => {
+      currentFile = null;
+      processing = false;
+      processBtn.disabled = true;
+      fileMeta.textContent = 'No file loaded yet.';
+      downloadLink.style.display = 'none';
+      setStatus('🔄 Reset. Drop a new file or click the drop zone.');
+    });
+
+    loadPyodideAndPackages();
+  </script>
+</body>
+</html>
