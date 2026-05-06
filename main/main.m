@@ -1,7 +1,7 @@
 clear; clc;
 
 %% config
-infile = 'distorted_audio.mp3';
+infile = 'distorted_audio.mp3'; %or .wav or whatever other common audio file
 outfile = 'recovered_clean.wav';
 
 cfg = struct();
