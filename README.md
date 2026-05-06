@@ -11,6 +11,13 @@ SCAD is a robust MATLAB framework for restoring poor-quality audio using stabili
 ## What SCAD Does
 SCAD automatically searches for informative regions in the audio, estimates a stable inverse model from multiple candidate segments, and applies the learned correction to the full recording.
 
+## ⚡ Try It First (Web Demo vs MATLAB)
+A web demo is available which processes files entirely locally, however beware it is **SLOW**. 
+
+👉 
+
+For any large processing and big files use matlab code for a 10-100x speedup in performance
+
 ### Core pipeline
 1. **Multi-resolution segment selection** across the full signal
 2. **Conditioning-aware candidate ranking** to avoid weak or unstable windows
