@@ -1,34 +1,55 @@
 # SCAD: Spectral Correction via Adaptive Deconvolution
 
 ## Quick Overview
-A robust MATLAB framework for correcting poor microphone audio - removes echoes, resonances, and "flabby" bass response through stabilized inverse filtering.
+SCAD is a robust MATLAB framework for restoring poor-quality audio using stabilized inverse filtering. It is designed for recordings affected by:
+- short echoes and reflections
+- resonant peaks and dips
+- temporal smearing / "flabby" low end
+- comb-filtering and mic coloration
+- stationary or slowly varying linear distortion
 
-## The Problem
-Poor quality recordings often introduce linear distortions:
-- Short echoes and reflections
-- Resonant frequency peaks/dips  
-- Temporal smearing ("flabby" sound)
-- Comb filtering artifacts
+## What SCAD Does
+SCAD automatically searches for informative regions in the audio, estimates a stable inverse model from multiple candidate segments, and applies the learned correction to the full recording.
 
-## How It Works
-1. **Blind estimation** of microphone impulse response
-2. **Automatic model selection** using BIC
-3. **Multi-criteria optimization** for stability
-4. **Stabilized Wiener filtering** with practical safeguards
+### Core pipeline
+1. **Multi-resolution segment selection** across the full signal
+2. **Conditioning-aware candidate ranking** to avoid weak or unstable windows
+3. **Blind inverse model estimation** with alternating Wiener / least-squares updates
+4. **Robust consensus kernel aggregation** across multiple segments
+5. **Outer refinement passes** for self-consistent re-selection and retraining
+6. **Stabilized Wiener deconvolution** with practical gain limits
 
 ## Key Features
-- ✅ Automatic parameter tuning
-- ✅ Handles real-world noisy recordings
-- ✅ Prevents common inverse filtering artifacts
-- ✅ Multiple safety modes (safe/best/aggressive)
-- ✅ Production-ready MATLAB code
+- Automatic segment discovery across the whole file
+- Multi-scale window analysis for transients and steady-state content
+- Robust kernel averaging across multiple training regions
+- Conditioning checks to reject poor inverse problems
+- Outer-loop refinement for better consistency
+- Stability safeguards against spectral blow-up
+- Useful for vocals, guitars, ribbon microphones, vinyl, and other linear-ish restoration tasks
+
+## Typical Use Cases
+SCAD works especially well when the recording chain behaves approximately like a smooth, causal linear system, such as:
+- old vocals and spoken word
+- guitars and amp / cabinet coloration
+- ribbon microphone recordings
+- vinyl restoration material
+- room coloration and mild echo correction
 
 ## Usage
-- Enter name/paths of input and output files
-- Let the script run and listen to results
+1. Set input and output file paths.
+2. Adjust the configuration knobs if needed.
+3. Run the script.
+4. Listen to the restored output.
 
-## Curious for more information? 
+## Notes
+- SCAD assumes the dominant distortion is approximately linear and time-invariant over the selected regions.
+- It is not intended for hard clipping, heavy saturation, or strongly time-varying effects.
+- Better training windows usually come from energetic, structured, non-silent audio.
+
+## Curious for More?
 - Read the white paper
-- Adjust parameters as needed for your system (ex custom impulse response)
+- Experiment with the configuration values
+- Adapt the impulse-response length and selection strategy to your material
 
 ![SCAD Workflow](scad.png)
