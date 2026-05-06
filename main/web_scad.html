@@ -184,11 +184,20 @@
 </head>
 <body>
   <div class="card">
-    <h1>🎧 Inverse Audio Corrector</h1>
-    <div class="sub">
-      Multi-resolution window selection → conditioning-aware consensus inverse model → global Wiener apply.
-      Everything runs locally in the browser via Pyodide.
-    </div>
+    <h1>🎧 Spectral Correction Adapticve Deconvolution Web Demo</h1>
+	
+	<div class="sub">
+	  <strong>Pipeline:</strong>
+	  Multi-resolution window selection → conditioning-aware consensus inverse model → global Wiener filtering.
+	  <br>
+
+	  <strong>Execution:</strong>
+	  Runs fully locally in the browser.
+	  <br>
+
+	  <strong>Note:</strong>
+	  The web demo is relatively slow. For production use, run the MATLAB implementation locally for ~10× performance improvement.
+	</div>
 
     <div class="grid">
       <div class="panel">
@@ -226,8 +235,73 @@
         </div>
       </div>
     </div>
+	
+	
 
-    <footer>Pyodide + NumPy + SciPy execute locally in the browser.</footer>
+	<ul style="font-size: 0.85em; line-height: 1.5;">
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.Lh</span>: Length of estimated impulse response (FIR model order). Higher values make the system model more expressive, but increase risk of overfitting.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.n_iter</span>: Number of alternating optimization iterations (x ↔ h updates). Controls convergence vs computation time.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.lambda_h</span>: Ridge regularization on h estimation. Stabilizes inversion and prevents spiky solutions.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.smooth_mu</span>: Smoothness penalty (second derivative). Suppresses ringing and enforces decay behavior.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.noise_floor</span>: Minimum noise floor for stability. Prevents division-by-near-zero amplification.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.maxInverseGain</span>: Caps frequency-domain inverse gain to avoid spectral blow-up.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.seg_seconds_list</span>: Multi-resolution window sizes for segment selection.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.K</span>: Number of selected training segments.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.hop_fraction</span>: Overlap between sliding windows.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.pool_mult</span>: Pre-selection multiplier for candidate pooling.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.n_outer</span>: Outer refinement iterations.
+	  </li>
+
+	  <li>
+		<span style="color: #d11a2a; font-family: monospace;">cfg.min_rms</span>: Silence threshold (RMS floor).
+	  </li>
+	</ul>
+		
+	
+	<footer>
+	  <a href="https://github.com/theIvanR" target="_blank" rel="noopener noreferrer">
+		GitHub
+	  </a>
+
+	  <a href="https://impressum.theivanr.duckdns.org/" rel="noopener">
+		Impressum
+	  </a>
+	</footer>
+
+</body>
+</html>
+	
   </div>
 
   <script>
